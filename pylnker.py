@@ -115,11 +115,6 @@ def read_unpack_bin(f, loc, count):
     result = ""
 
     for b in raw:
-        if not isinstance(b, int):
-            # Python2 each byte in a binary object,
-            # but on Python3 we get the int number directly
-            b = ord(b)
-
         result += ("{0:08b}".format(b))[::-1]
 
     return result
