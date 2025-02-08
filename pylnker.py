@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # This is a quick and dirty port of lnk-parse-1.0.pl found here:
 #   https://code.google.com/p/revealertoolkit/source/browse/trunk/tools/lnk-parse-1.0.pl
 #   Windows LNK file parser - Jacob Cunningham - jakec76@users.sourceforge.net
@@ -8,14 +10,15 @@
 #  Edits by YK
 #   - Added support for blank/invalid timestamps
 #   - Bug fixes for attribute parsing & unicode strings
-import sys, datetime, binascii
-import typing
 
-import six
-from six.moves import xrange
+#  Edits by rswinkle
+#   - Remove all Python 2 stuff, it's dead and buried
+#   - Make it a runnable script
+
+import sys, datetime, binascii
 
 # HASH of flag attributes
-flag_hash = [["", ""] for _ in xrange(7)]
+flag_hash = [["", ""] for _ in range(7)]
 flag_hash[0][1] = "HAS SHELLIDLIST"
 flag_hash[0][0] = "NO SHELLIDLIST"
 flag_hash[1][1] = "POINTS TO FILE/DIR"
@@ -32,7 +35,7 @@ flag_hash[6][1] = "HAS CUSTOM ICON"
 flag_hash[6][0] = "NO CUSTOM ICON"
 
 # HASH of FileAttributes
-file_hash = [["", ""] for _ in xrange(15)]
+file_hash = [["", ""] for _ in range(15)]
 file_hash[0][1] = "READ ONLY"
 file_hash[1][1] = "HIDDEN"
 file_hash[2][1] = "SYSTEM FILE"
@@ -50,7 +53,7 @@ file_hash[13][1] = "NOT_CONTENT_INDEXED"
 file_hash[14][1] = "ENCRYPTED"
 
 # Hash of ShowWnd values
-show_wnd_hash = [[""] for _ in xrange(11)]
+show_wnd_hash = [[""] for _ in range(11)]
 show_wnd_hash[0] = "SW_HIDE"
 show_wnd_hash[1] = "SW_NORMAL"
 show_wnd_hash[2] = "SW_SHOWMINIMIZED"
@@ -64,7 +67,7 @@ show_wnd_hash[9] = "SW_RESTORE"
 show_wnd_hash[10] = "SW_SHOWDEFAULT"
 
 # Hash for Volume types
-vol_type_hash = [[""] for _ in xrange(7)]
+vol_type_hash = [[""] for _ in range(7)]
 vol_type_hash[0] = "Unknown"
 vol_type_hash[1] = "No root directory"
 vol_type_hash[2] = "Removable (Floppy,Zip,USB,etc.)"
@@ -75,7 +78,7 @@ vol_type_hash[6] = "RAM Drive"
 
 
 def reverse_hex(HEXDATE):
-    hexVals = [HEXDATE[i:i + 2] for i in xrange(0, 16, 2)]
+    hexVals = [HEXDATE[i:i + 2] for i in range(0, 16, 2)]
     reversedHexVals = hexVals[::-1]
     return b''.join(reversedHexVals)
 
@@ -85,7 +88,7 @@ def validate(t, v):
         raise ValueError("Variable '{}' must be {} type".format(v, t))
 
 def validate_binary(v):
-    return validate(six.binary_type, v)
+    return validate(bytes, v)
 
 
 def assert_lnk_signature(f):
@@ -141,7 +144,7 @@ def read_unpack(f, loc, count):
 
     for b in raw:
         if isinstance(b, int):
-            b = six.int2byte(b)
+            b = bytes((b,))
         result += binascii.hexlify(b)
 
     return result
@@ -206,7 +209,7 @@ def parse_lnk(f):
     flag_desc = list()
 
     # flags are only the first 7 bits
-    for cnt in xrange(len(flags) - 1):
+    for cnt in range(len(flags) - 1):
         bit = int(flags[cnt])
         # grab the description for this bit
         flag_desc.append(flag_hash[cnt][bit])
@@ -216,7 +219,7 @@ def parse_lnk(f):
     # File Attributes 4bytes@18h = 24d
     file_attrib = read_unpack_bin(f, 24, 4)
     attrib_desc = list()
-    for cnt in xrange(0, 14):
+    for cnt in range(0, 14):
         bit = int(file_attrib[cnt])
         # grab the description for this bit
         if bit == 1:
@@ -408,11 +411,26 @@ def parse_lnk(f):
         addnl_text, next_loc = add_info(f, next_loc)
         output_obj["icon_filename"] = addnl_text.decode('utf-16le', errors='ignore')
 
-    for k, v in six.iteritems(output_obj):
-        if isinstance(v, six.binary_type):
+    for k, v in output_obj.items():
+        if isinstance(v, bytes):
             output_obj[k] = v.replace(b"\x00", b"")
     return output_obj
 
 
 def parse(lnk_file_obj):
     return parse_lnk(lnk_file_obj)
+
+
+def usage():
+    print("Usage: ", sys.argv[0], ".LNK_FILE")
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        usage()
+    
+    # parse .lnk file
+    f = open(sys.argv[1], "rb")
+    out = parse_lnk(f)
+    print("out:",out)
